@@ -26,6 +26,7 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 
 
 // Defines
@@ -34,7 +35,7 @@
 
 // Wrappers
 float long_arithmetic_calculation(int loops_multiplier);
-void write_data_to_memory_page(void *mem_page);
+void write_data_to_memory(void *mem_page);
 void worker_init(int cpu);
 void run_anon_worker(long long mem_size, long long report_mem);
 void run_file_worker(long long mem_size, long long report_mem, char *file_path);
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
 				switch (pid = fork()) {
             	    case 0:  // child
 						worker_init(CPU_UNBOUND);
-    	                // start_file_worker(params);
+    	                run_file_worker(file_mem, report_mem, file_path);
 	                case -1:  // error
 						fprintf(stderr, "Fork failed with (-1)\n");
 			    	    exit(EXIT_FAILURE);
@@ -236,7 +237,7 @@ int main(int argc, char *argv[]) {
         		    	switch (pid = fork()) {
 		                	case 0:  // child
 								worker_init(i);
-	        		            // start_file_worker(params);
+	        		            run_file_worker(file_mem, report_mem, file_path);
     	            		case -1:  // error
 			                    fprintf(stderr, "Fork failed with (-1)\n");
         			            exit(EXIT_FAILURE);
@@ -292,7 +293,7 @@ void run_anon_worker(long long mem_size, long long report_mem) {
 
 	        for (i = 0; i < num_pages; i++) {
     	        // Write data to memory page
-        	    write_data_to_memory_page(iter_mem_ptr);
+        	    write_data_to_memory(iter_mem_ptr);
 	
     	        // Perform arithmetic calculation
         	    long_arithmetic_calculation(calc_loops);
@@ -306,7 +307,6 @@ void run_anon_worker(long long mem_size, long long report_mem) {
 	        }
         // TODO: 
         // - move mem alloc into function
-        // - free at the end of second cycle and realloc
         //
 
     	    iter_mem_ptr = mem_ptr;
@@ -316,7 +316,78 @@ void run_anon_worker(long long mem_size, long long report_mem) {
 	}
 }
 
-void run_file_worker(long long mem_size, long long report_mem, char *file_path);
+void run_file_worker(long long mem_size, long long report_mem, char *file_path) {
+	int fd;
+	char *file_ptr, *file_iter;
+	int PAGE_SIZE = getpagesize(); // get the system page size
+	off_t file_size = mem_size;
+    int num_pages = mem_size / PAGE_SIZE;
+    int report_pages = report_mem / PAGE_SIZE;
+    pid_t pid = getpid();
+    clock_t stopwatch;
+    int i;
+    
+	if (mem_size <= 0) {
+        fprintf(stderr, "BUG: File thread sanity: Memory size must be greater than 0.\n");
+        exit(EXIT_FAILURE);
+    }
+
+	if (file_path == "") {
+		fprintf(stderr, "BUG: File thread sanity: File path not specified.\n");
+		exit(EXIT_FAILURE);
+    }
+	
+	// Create file and set size
+	fd = open(file_path, O_RDWR | O_CREAT);
+	if (fd < 0) {
+        fprintf(stderr, "Error opening the file %s.\n", file_path);
+        exit(EXIT_FAILURE);
+    }
+	
+	if (ftruncate(fd, file_size) < 0) {
+        fprintf(stderr, "Error setting file size for %s.\n", file_path);
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+	// mmap the file
+	file_ptr = mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (file_ptr == MAP_FAILED) {
+        fprintf(stderr, "Error mapping the file %s into memory.\n", file_path);
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+	
+	// write+fault the file
+	while (1) {
+        start_clock(&stopwatch); // start the clock
+
+        file_iter = file_ptr;
+
+        for (i = 0; i < num_pages; i++) {
+            // Write data to memory page
+            write_data_to_memory(file_iter);
+
+            // Perform arithmetic calculation
+            long_arithmetic_calculation(calc_loops);
+
+            // Move to next memory page
+            file_iter += PAGE_SIZE;
+
+            if (i>0 && (i % report_pages == 0)) {
+                report_time(&stopwatch); //report elapsed time and reset
+            }
+        }
+    }
+	// Dead code
+	if (munmap(file_ptr, file_size) < 0) {
+        fprintf(stderr, "Error unmapping the file %s from memory.\n", file_path);
+    }
+	close(fd);
+
+	exit(EXIT_SUCCESS);
+}
+
 
 void worker_init(int cpu) {
 	cpu_set_t mask;
@@ -394,8 +465,8 @@ void print_help(void) {
 	printf("    [--dry-run]          - don't start anything, only print given setup\n");
 	printf("\n");
     printf("    [--anon_mem size]    - malloc() size for anon_workers\n");
-    printf("    [--file_mem size]    - NOT IMPLEMENTED YET! - fallocate() size for anon_workers\n");
-	printf("    [--file_path fpath]  - NOT IMPLEMENTED YET! - specify storage and filesystem target to allocate on\n");
+    printf("    [--file_mem size]    - file size for file_workers\n");
+	printf("    [--file_path fpath]  - specify storage and filesystem target to allocate on\n");
 	printf("\n");
 	printf("    [--cpus cpu-list]    - specify CPUs on which workers will be spawned and pinned  (default: unbound)\n");
 	printf("    [-t num_procs]       - number of workers of each type (anon/file) to spawn  (default: 1)\n");
@@ -416,7 +487,7 @@ float long_arithmetic_calculation(int loops_multiplier) {
     return result;
 }
 
-void write_data_to_memory_page(void *mem_page) {
+void write_data_to_memory(void *mem_page) {
     // Define a few bytes of data to write
     char data[] = "ABC";
     
