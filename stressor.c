@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
 	int workers = 0;  // forked children count
     char *arg_value;  // value for argument
 	int dry_run = 0;
-	int i, t;  // iterators
+	long long i, t;  // iterators
 	exec_name = argv[0];  //static
 
 	// OOM score adj tmp vars
@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
 	else {  
 	// We got specified cpu_list - spawn workers pinned to specified CPUs for each mode (anon/file)
 		for (i=0; i < 64; i++) {
-			if (cpus & 1 << i) {
+			if (cpus & (long long) 1 << i) {
 				for (t=0; t < procs_per_cpu; t++) {
 			        if (anon_mem > 0) {
 			            switch (pid = fork()) {
@@ -399,7 +399,7 @@ void worker_init(int cpu) {
     }
 
 	// Set CPU affinity
-	if (cpu >= 0) { 
+	if (cpu != CPU_UNBOUND) {
 		CPU_ZERO(&mask);
 		CPU_SET(cpu, &mask);
 		if (sched_setaffinity(0, sizeof(mask), &mask) < 0) { 			
