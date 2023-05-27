@@ -6,7 +6,7 @@
 
 long long atoll_b(const char *nptr);
 void set_oom_score(int oom_adj);
-int allocfault_memory(void *mem_ptr, int size);
+int allocfault_memory(void *mem_ptr, long long size);
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     }
 
     int oom_adj = atoi(argv[1]);
-    int mem_size = atoll_b(argv[2]); 
+    long long mem_size = atoll_b(argv[2]);
 	void *mem_ptr;
 
 	set_oom_score(oom_adj);
@@ -54,10 +54,10 @@ void set_oom_score(int oom_adj) {
     printf("oom_score_adj set to %d\n", oom_adj);
 }
 
-int allocfault_memory(void *mem_ptr, int size) {
+int allocfault_memory(void *mem_ptr, long long size) {
 	
 	int PAGE_SIZE = getpagesize();
-	int num_pages = size / PAGE_SIZE;
+	long long num_pages = size / PAGE_SIZE;
 	int i;
 	char data[] = "ABC";
 	void *mem_iter;
@@ -68,7 +68,7 @@ int allocfault_memory(void *mem_ptr, int size) {
 		return -1;
 	}
 
-	printf("Allocated %d Bytes (%d pages) of memory.\n", size, num_pages);
+	printf("Allocated %lld Bytes (%lld pages) of memory.\n", size, num_pages);
 
 	mem_iter = mem_ptr;
 	for (i = 0; i < num_pages; ++i) {
@@ -126,7 +126,7 @@ atoll_b (const char *nptr)
         }
     }
 
-  if (sscanf (nptr, "%lli", &value) != 1)
+  if (sscanf (nptr, "%llu", &value) != 1)
     {
       fprintf(stderr, "invalid number: %s\n", nptr);
       exit (1);

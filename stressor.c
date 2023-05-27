@@ -265,11 +265,11 @@ int main(int argc, char *argv[]) {
 void run_anon_worker(long long mem_size, long long report_mem) {
 	void *mem_ptr, *iter_mem_ptr;
 	int PAGE_SIZE = getpagesize(); // get the system page size
-	int num_pages = mem_size / PAGE_SIZE;
-	int report_pages = report_mem / PAGE_SIZE;
+	long long num_pages = mem_size / PAGE_SIZE;
+	long long report_pages = report_mem / PAGE_SIZE;
 	pid_t pid = getpid();
 	clock_t stopwatch;
-	int i, k;  // iterators
+	long long i, k;  // iterators
 
     if (mem_size <= 0) {
         fprintf(stderr, "BUG: Anon thread sanity: Memory size must be greater than 0.\n");
@@ -321,8 +321,8 @@ void run_file_worker(long long mem_size, long long report_mem, char *file_path) 
 	char *file_ptr, *file_iter;
 	int PAGE_SIZE = getpagesize(); // get the system page size
 	off_t file_size = mem_size;
-    int num_pages = mem_size / PAGE_SIZE;
-    int report_pages = report_mem / PAGE_SIZE;
+    long long num_pages = mem_size / PAGE_SIZE;
+    long long report_pages = report_mem / PAGE_SIZE;
     pid_t pid = getpid();
     clock_t stopwatch;
     int i;
