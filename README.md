@@ -8,8 +8,6 @@ This project contains a set of program tools created with purpose to push on the
   
   This program forks processes that allocate anonymous or pagecache memory and then touch each page while doing some arithmetic work in-between.
   The aim is to measure how much overhead penalty (in terms of execution time) is added by the kernel's allocation slowpath.
-  
-  **NOTE:** The program is yet incomplete.
 
 
 - *balloon.c*
