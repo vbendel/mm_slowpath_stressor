@@ -1,8 +1,6 @@
 # mm_slowpath_stressor
 This project contains a set of program tools created with purpose to push on the Linux's allocation slowpath and measure overhead of those slowpath algorithms.
 
-#### NOTE: This is currently still under development and not fully functioning!
-
 ## Tools:
 - *stressor.c*
   
@@ -16,4 +14,4 @@ This project contains a set of program tools created with purpose to push on the
  
 
 ## Compilation
-I'm currently just simply testing it on RHEL8.7 with `gcc` with no arguments.
+Build with simple `gcc` with no extra arguments (tested on RHEL8.7 and RHEL9.1).
